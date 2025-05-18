@@ -10,8 +10,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 🔑 API-ключи
-openai.api_key = "sk-..."  # <-- ВСТАВЬ СВОЙ
-TELEGRAM_TOKEN = "7263..."   # <-- ВСТАВЬ СВОЙ
+openai.api_key = os.environ.get("OPENAI_API_KEY")  # <-- ВСТАВЬ СВОЙ
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")   # <-- ВСТАВЬ СВОЙ
 
 # Flask
 app = Flask(__name__)
@@ -58,4 +58,5 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=8080)
+    #fix env vars
 
