@@ -1,31 +1,44 @@
-import openai
+import os
 import logging
+import openai
 from flask import Flask, request
 from telegram import Bot, Update
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters
+)
 import threading
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🔑 API-ключи
-openai.api_key = os.environ.get("OPENAI_API_KEY")  # <-- ВСТАВЬ СВОЙ
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")   # <-- ВСТАВЬ СВОЙ
+# API-ключи
+openai.api_key = os.environ.get("OPENAI_API_KEY")  # <-- из Render
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")  # <-- из Render
 
-# Flask
+# Flask-приложение
 app = Flask(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
+
+# Telegram-бот
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-# /start команда
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет. Я твой дневник. Напиши, как прошёл твой день.")
 
-# Обработка сообщений
+# Ответ на любые сообщения
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
-    logger.info(f"📩 От: {update.effective_user.username} ({update.effective_user.id}) — {user_input}")
+    user_id = update.effective_user.id
+    username = update.effective_user.username or "Без ника"
+
+    logger.info(f"📨 От: {username} (ID: {user_id}) – {user_input}")
+
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -37,26 +50,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply = response["choices"][0]["message"]["content"]
         await update.message.reply_text(reply)
     except Exception as e:
-        logger.error(f"Ошибка OpenAI: {e}")
+        logger.error(f"❌ Ошибка OpenAI: {e}")
         await update.message.reply_text("Упс, что-то пошло не так. Попробуй позже.")
 
-# Flask endpoint для проверки
+# Flask-пинг для Render
 @app.route('/')
-def index():
-    return "Бот работает!"
+def home():
+    return 'OK', 200
 
-# Telegram webhook/polling
-@app.route('/start-bot')
+# Запуск Telegram-бота в отдельном потоке
 def start_bot():
-    thread = threading.Thread(target=application.run_polling, name="BotThread")
-    thread.start()
-    return "Бот запущен."
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    logger.info("🚀 Бот запускается...")
+    application.run_polling()
 
-# Обработчики
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=8080)
-    #fix env vars
-
+if __name__ == "__main__":
+    threading.Thread(target=start_bot).start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
