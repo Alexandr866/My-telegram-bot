@@ -49,6 +49,9 @@ async def run_bot():
     await application.run_polling()
 
 # Запуск бота в отдельном потоке
-if __name__ == '__main__':
+if __name__ == "__main__":
     import asyncio
-    asyncio.run(run_bot())
+
+    loop = asyncio.get_event_loop()
+    loop.create_task(run_bot())
+    loop.run_forever()
