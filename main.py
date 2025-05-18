@@ -2,7 +2,7 @@ import openai
 import logging
 from flask import Flask, request
 from telegram import Bot, Update
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters, Dispatcher
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 import threading
 
 # Настройка логирования
