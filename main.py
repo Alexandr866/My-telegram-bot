@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 
 # 🔐 Ключи из переменных окружения
-openai.api_key = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # 🌍 Поддерживаемые языки
