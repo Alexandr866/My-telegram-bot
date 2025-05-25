@@ -3,11 +3,11 @@ import logging
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-import openai
+from openai import OpenAI
 
 # Загрузка .env
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # Поддерживаемые языки
@@ -16,14 +16,14 @@ LANGUAGES = {
     "English": "You are an AI diary. Help the user express themselves. Do not give advice, just listen and support them."
 }
 
-# Контекст юзеров
+# Контекст пользователей
 user_context = {}
 
 # Логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Старт
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[lang] for lang in LANGUAGES]
     user_context[update.effective_user.id] = {
@@ -64,7 +64,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ctx["messages"] = ctx["messages"][-20:]
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "system", "content": LANGUAGES[ctx["lang"]]}, *ctx["messages"]]
         )
@@ -75,11 +75,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(e)
         await update.message.reply_text(f"Ошибка: {type(e).__name__} — {e}")
 
-# Запуск бота
+# Запуск
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
-
-
