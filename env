@@ -1,5 +1,5 @@
-POSTGRES_HOST=dpg-dpg-d0pmebmmcj7s73eap41g-a     # ← копируешь из Hostname
+POSTGRES_HOST=dpg-dpg-d0pmebmmcj7s73eap41g    
 POSTGRES_PORT=5432
-POSTGRES_DB=my_telegram_bot_7j2d     # ← из поля Database
-POSTGRES_USER=my_telegram_bot_7j2d_user_user  # ← из поля Username
-POSTGRES_PASSWORD=BDoYCACmm7T9Si7wpf8L5L7L9rV3bGT1     # ← из Password
+POSTGRES_DB=my_telegram_bot_7j2d     
+POSTGRES_USER=my_telegram_bot_7j2d_user_user  
+POSTGRES_PASSWORD=BDoYCACmm7T9Si7wpf8L5L7L9rV3bGT1     
