@@ -1,6 +1,5 @@
 import logging
 import openai
-from flask import Flask, request
 from telegram import Update, Bot, ReplyKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
