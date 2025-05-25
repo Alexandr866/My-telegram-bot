@@ -5,6 +5,7 @@ from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from threading import Thread
 from dotenv import load_dotenv
+from translations import translations
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
