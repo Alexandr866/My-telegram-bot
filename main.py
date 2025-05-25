@@ -5,25 +5,25 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import openai
 
-# Загрузка переменных окружения
+# Загрузка .env
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-# Список языков и промпты
+# Поддерживаемые языки
 LANGUAGES = {
     "Русский": "Ты — ИИ-дневник. Помоги пользователю высказаться. Не давай советов, просто слушай и поддерживай.",
     "English": "You are an AI diary. Help the user express themselves. Do not give advice, just listen and support them."
 }
 
-# Контекст пользователей
+# Контекст юзеров
 user_context = {}
 
 # Логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# /start
+# Старт
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[lang] for lang in LANGUAGES]
     user_context[update.effective_user.id] = {
@@ -35,7 +35,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
 
-# Обработка
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
@@ -56,7 +56,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Выбери язык из предложенных.")
         return
 
-    # если язык не установлен по какой-то причине
     if "lang" not in ctx:
         await update.message.reply_text("Сначала выбери язык с помощью /start.")
         return
@@ -75,5 +74,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(e)
         await update.message.reply_text(f"Ошибка: {type(e).__name__} — {e}")
+
+# Запуск бота
+if __name__ == "__main__":
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling()
 
 
