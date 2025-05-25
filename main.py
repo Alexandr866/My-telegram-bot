@@ -1,88 +1,78 @@
-import logging
 import os
-from collections import defaultdict
-
-import openai
+import logging
+from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+import openai
 
-# 🔐 Ключи из переменных окружения
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+load_dotenv()
+OPENAI.API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-# 🌍 Поддерживаемые языки
+# Список языков и начальные промпты
 LANGUAGES = {
-    "Русский": "Ты — ИИ-дневник. Помоги пользователю высказаться. Не давай советов, не перебивай, просто слушай и поддерживай.",
-    "English": "You are an AI diary. Help the user express themselves. Do not give advice, just listen and support them.",
-    "Қазақша": "Сен – жасанды интеллект күнделік. Тек тыңда, кеңес берме.",
-    "Deutsch": "Du bist ein KI-Tagebuch. Höre zu und unterstütze.",
-    "Українська": "Ти — ІІ-щоденник. Не давай порад, просто слухай і підтримуй.",
-    "Português": "Você é um diário de IA. Apenas escute e apoie.",
-    "Español": "Eres un diario de IA. Escucha y apoya sin dar consejos.",
-    "Français": "Tu es un journal IA. Écoute et soutiens sans juger.",
+    "Русский": "Ты — ИИ-дневник. Помоги пользователю высказаться. Не давай советов, просто слушай и поддерживай.",
+    "English": "You are an AI diary. Help the user express themselves. Do not give advice, just listen and support them."
 }
 
-# 🧠 Память на пользователя (RAM)
-user_context = defaultdict(lambda: {"language": "Русский", "messages": []})
+# Контекст пользователей
+user_context = {}
 
-# 🔧 Логирование
+# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Команда /start — выбор языка
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    reply_keyboard = [[lang] for lang in LANGUAGES]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+    keyboard = [[lang] for lang in LANGUAGES]
     await update.message.reply_text(
-        "Привет! Я твой личный ИИ-дневник. Пожалуйста, выбери язык общения:", reply_markup=markup
+        "Выбери язык общения:",
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
 
 # Установка языка
 async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = update.message.text.strip()
+    lang = update.message.text
     if lang in LANGUAGES:
-        user_context[update.effective_user.id]["language"] = lang
-        await update.message.reply_text(f"Язык установлен: {lang}. Можешь писать.")
+        user_context[update.effective_user.id] = {
+            "lang": lang,
+            "messages": []
+        }
+        await update.message.reply_text(f"Язык установлен: {lang}. Можешь начинать писать.")
     else:
-        await handle_message(update, context)  # если это не язык — обрабатываем как обычное сообщение
+        await update.message.reply_text("Выбери язык из предложенных.")
 
-# Генерация ответа через OpenAI
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_data = user_context[user_id]
-    lang = user_data["language"]
-    messages = user_data["messages"]
+    if user_id not in user_context:
+        await update.message.reply_text("Сначала выбери язык с помощью команды /start.")
+        return
 
-    messages.append({"role": "user", "content": update.message.text})
-    if len(messages) > 20:
-        messages = messages[-20:]
+    ctx = user_context[user_id]
+    ctx["messages"].append({"role": "user", "content": update.message.text})
+    ctx["messages"] = ctx["messages"][-20:]
 
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": LANGUAGES[lang]},
-                *messages
+                {"role": "system", "content": LANGUAGES[ctx["lang"]]},
+                *ctx["messages"]
             ]
         )
         reply = response.choices[0].message.content.strip()
-        messages.append({"role": "assistant", "content": reply})
-        user_context[user_id]["messages"] = messages
+        ctx["messages"].append({"role": "assistant", "content": reply})
         await update.message.reply_text(reply)
     except Exception as e:
-        logger.error(f"OpenAI error: {e}")
-        await update.message.reply_text("Что-то пошло не так. Попробуй позже.")
+        logger.error(e)
+        await update.message.reply_text("Ошибка обработки. Попробуй позже.")
 
-# 🚀 Запуск polling (для Render — Background Worker)
+# Запуск
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, set_language))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
 
